@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import styles from "./page.module.css";
 import ImageUploader from "@/components/ImageUploader/ImageUploader";
-import ConversionPanel from "@/components/ConversionPanel/ConversionPanel";
 import ImagePreview from "@/components/ImagePreview/ImagePreview";
-import ImageEditor, { EditorSettings } from "@/components/ImageEditor/ImageEditor";
 import ProductSearch from "@/components/ProductSearch/ProductSearch";
-
-import heic2any from 'heic2any';
 import HistoryPanel, { HistoryItem } from "@/components/HistoryPanel/HistoryPanel";
+
+// Carregados só no browser — usam window/WebAssembly e quebram o SSR
+import type { EditorSettings } from "@/components/ImageEditor/ImageEditor";
+const ImageEditor    = dynamic(() => import("@/components/ImageEditor/ImageEditor"),    { ssr: false });
+const ConversionPanel = dynamic(() => import("@/components/ConversionPanel/ConversionPanel"), { ssr: false });
 
 type Tab = "busca" | "editor";
 
@@ -39,6 +41,7 @@ export default function Home() {
     if (isHeic) {
       setIsPreparingHeic(true);
       try {
+        const heic2any = (await import('heic2any')).default;
         const convertedBlob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
         const finalBlob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
         const convertedFile = new File([finalBlob], file.name.replace(/\.hei[cf]$/i, '.jpg'), { type: 'image/jpeg' });
