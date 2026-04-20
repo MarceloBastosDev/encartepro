@@ -1,0 +1,47 @@
+:root {
+  --bg-color: #f7f8fa; /* Off-white */
+  --surface-color: rgba(255, 255, 255, 0.85); /* Semi-transparent for glassmorphism */
+  --primary-color: #e63946; /* Vibrant SaaS Red */
+  --primary-hover: #d90429; /* Darker Red */
+  --text-primary: #1a1a1a; /* Elegant Dark */
+  --text-secondary: #6c757d;
+  --border-color: rgba(0, 0, 0, 0.08);
+  --radius-md: 16px;
+  --radius-lg: 32px;
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 20px 40px -10px rgba(0, 0, 0, 0.08);
+  --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background-color: var(--bg-color);
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(230, 57, 70, 0.05) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(26, 26, 26, 0.03) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(230, 57, 70, 0.05) 0px, transparent 50%);
+  background-attachment: fixed;
+  color: var(--text-primary);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+}
