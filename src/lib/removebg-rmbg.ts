@@ -6,7 +6,7 @@
 import { AutoModel, AutoProcessor, RawImage, env } from '@huggingface/transformers';
 
 // Roda sem web worker — compatível com Next.js sem config extra
-env.backends.onnx.wasm.proxy = false;
+if (env.backends.onnx.wasm) env.backends.onnx.wasm.proxy = false;
 
 const MODEL_ID = 'briaai/RMBG-1.4';
 
