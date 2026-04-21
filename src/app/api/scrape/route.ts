@@ -14,14 +14,26 @@ export interface ScrapeResult {
   url?: string;
 }
 
-// Lojas VTEX brasileiras com API pública — todas consultadas em paralelo
+// Lojas VTEX exclusivamente de supermercado/mercearia (sem eletrônicos, roupas, etc.)
 const VTEX_STORES = [
   'bistek',
   'prezunic',
   'condor',
   'sondadelivery',
   'angeloni',
+  'gbarbosa',
+  'mateus',
+  'supernosso',
+  'zona-sul',
+  'paodeacucar',
 ];
+
+// Palavras que indicam produto claramente fora do contexto de supermercado de alimentos
+const NON_FOOD_RE = /brinquedo|boneca|quadro|decoraç|puzzle|jogo\s|eletron|notebook|celular|smartphone|roupa|camiseta|tênis|calçad|playstation|xbox|nintendo|dvd|blu.?ray|livro|escolar|papelaria/i;
+
+function isFood(title: string): boolean {
+  return !NON_FOOD_RE.test(title);
+}
 
 const PAGE_SIZE = 24;
 
@@ -68,7 +80,7 @@ async function vtexSearch(query: string, page: number): Promise<ScrapeResult[]> 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data: any[] = await res.json();
       if (!Array.isArray(data) || !data.length) return [];
-      return parseVtex(data, account, from);
+      return parseVtex(data, account, from).filter(r => isFood(r.title));
     } catch {
       return [];
     }
@@ -91,6 +103,33 @@ async function vtexSearch(query: string, page: number): Promise<ScrapeResult[]> 
   return merged;
 }
 
+// ── Open Food Facts — cobre produtos industrializados com foto ────────────────
+async function offSearch(query: string, page: number): Promise<ScrapeResult[]> {
+  try {
+    const url =
+      `https://search.openfoodfacts.org/search` +
+      `?q=${encodeURIComponent(query)}&page=${page + 1}&page_size=24&fields=id,product_name,image_url,brands`;
+
+    const res = await fetch(url, {
+      headers: { 'User-Agent': UA, Accept: 'application/json' },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return [];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data: any = await res.json();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data.hits ?? []).flatMap((p: any, i: number) => {
+      const img: string = p.image_url ?? '';
+      if (!img || img.includes('no_nutrition') || img.includes('placeholder')) return [];
+      const title = [p.brands, p.product_name].filter(Boolean).join(' — ') || query;
+      return [{ id: `off_p${page}_${i}`, title, image: img, preview: img }];
+    });
+  } catch {
+    return [];
+  }
+}
+
 export async function GET(request: NextRequest) {
   const q    = request.nextUrl.searchParams.get('q')?.trim();
   const page = parseInt(request.nextUrl.searchParams.get('page') ?? '0', 10) || 0;
@@ -98,8 +137,23 @@ export async function GET(request: NextRequest) {
   if (!q) return NextResponse.json({ error: 'q obrigatório' }, { status: 400 });
 
   try {
-    const results = await vtexSearch(q, page);
-    return NextResponse.json({ results, page }, {
+    // VTEX e Open Food Facts em paralelo
+    const [vtex, off] = await Promise.all([
+      vtexSearch(q, page),
+      offSearch(q, page),
+    ]);
+
+    // VTEX na frente (fotos de produto limpas), OFF complementa
+    const seen   = new Set<string>();
+    const merged: ScrapeResult[] = [];
+    for (const r of [...vtex, ...off]) {
+      if (r.image && !seen.has(r.image)) {
+        seen.add(r.image);
+        merged.push(r);
+      }
+    }
+
+    return NextResponse.json({ results: merged, page }, {
       headers: { 'Cache-Control': 's-maxage=300, stale-while-revalidate=60' },
     });
   } catch (err) {

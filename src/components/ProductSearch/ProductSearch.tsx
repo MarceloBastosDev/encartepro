@@ -28,7 +28,8 @@ export default function ProductSearch({ onSelectImage }: ProductSearchProps) {
   const [downloading, setDownloading] = useState<string | null>(null);
   const [toast, setToast]           = useState<string | null>(null);
   const toastTimer                  = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastQuery                   = useRef("");
+  const lastQuery = useRef("");
+  const ddgVqd    = useRef<string>(""); // token reutilizado na paginação
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -36,11 +37,54 @@ export default function ProductSearch({ onSelectImage }: ProductSearchProps) {
     toastTimer.current = setTimeout(() => setToast(null), 2800);
   };
 
-  async function fetchPage(q: string, p: number): Promise<ProductResult[]> {
+  // Busca produtos nas lojas (VTEX + OFF) via API route
+  async function fetchStorePage(q: string, p: number): Promise<ProductResult[]> {
     const res = await fetch(`/api/scrape?q=${encodeURIComponent(q)}&page=${p}`);
-    if (!res.ok) throw new Error(`Erro ${res.status}`);
+    if (!res.ok) return [];
     const data = await res.json();
     return data.results ?? [];
+  }
+
+  // Busca imagens no DuckDuckGo via proxy (funciona com o IP do servidor Next.js)
+  async function fetchDdgPage(q: string, p: number): Promise<ProductResult[]> {
+    try {
+      const term   = `${q} produto supermercado embalagem`;
+      const offset = p * 24;
+      const vqd    = p === 0 ? '' : ddgVqd.current;
+      const params = new URLSearchParams({ q: term, s: String(offset) });
+      if (vqd) params.set('vqd', vqd);
+
+      const res = await fetch(`/api/ddg?${params}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+
+      // Guarda o token para as próximas páginas
+      if (data.vqd) ddgVqd.current = data.vqd;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (data.results ?? []).slice(0, 24).map((r: any, i: number) => ({
+        id: `ddg_p${p}_${offset + i}`,
+        title: r.title ?? q,
+        image: r.image ?? '',
+        preview: r.thumbnail ?? r.image ?? '',
+      })).filter((r: ProductResult) => r.image);
+    } catch {
+      return [];
+    }
+  }
+
+  async function fetchPage(q: string, p: number): Promise<ProductResult[]> {
+    // VTEX+OFF e DDG em paralelo; mescla sem duplicatas
+    const [store, ddg] = await Promise.all([
+      fetchStorePage(q, p),
+      fetchDdgPage(q, p),
+    ]);
+    const seen = new Set<string>();
+    const merged: ProductResult[] = [];
+    for (const r of [...store, ...ddg]) {
+      if (r.image && !seen.has(r.image)) { seen.add(r.image); merged.push(r); }
+    }
+    return merged;
   }
 
   const handleSearch = useCallback(async (e?: React.FormEvent) => {
