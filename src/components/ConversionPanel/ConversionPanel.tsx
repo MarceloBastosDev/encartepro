@@ -21,8 +21,7 @@ export default function ConversionPanel({ blob, onProcessed }: ConversionPanelPr
       let currentBlob: Blob = blob;
 
       if (shouldRemoveBg) {
-        setProgressText('Removendo fundo (IA)...');
-        currentBlob = await removeBackground(blob);
+        currentBlob = await removeBackground(blob, (msg) => setProgressText(msg));
       }
 
       setProgressText('Convertendo formato...');

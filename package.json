@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@huggingface/transformers": "^3.3.3",
     "@imagemagick/magick-wasm": "^0.0.40",
     "@imgly/background-removal": "^1.7.0",
     "heic2any": "^0.0.4",
