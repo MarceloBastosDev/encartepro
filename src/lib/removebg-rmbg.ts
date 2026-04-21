@@ -38,7 +38,7 @@ export async function removeBackgroundRMBG(
 
   const result = await imglyRemove(prepared, {
     proxyToWorker: true,            // Web Worker — nunca trava o browser
-    model: 'medium',                // Modelo mais preciso (não o 'small' padrão)
+    model: 'isnet',                 // Modelo mais preciso disponível nesta versão
     output: { format: 'image/png', quality: 1 },
     progress: (key: string, current: number, total: number) => {
       if (!total) return;
