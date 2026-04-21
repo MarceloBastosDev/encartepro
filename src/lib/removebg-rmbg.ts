@@ -41,7 +41,8 @@ async function loadModel(onProgress?: (msg: string) => void): Promise<void> {
 
     const progressCb = makeProgressCb(onProgress);
 
-    cachedModel = await AutoModel.from_pretrained(MODEL_ID, {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    cachedModel = await (AutoModel as any).from_pretrained(MODEL_ID, {
       config: { model_type: 'custom' },
       progress_callback: progressCb,
     });
