@@ -105,6 +105,54 @@
   max-width: 1100px !important;
 }
 
+/* ── Botão voltar ── */
+.backBtn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.backBtn:hover {
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+  background: rgba(230, 57, 70, 0.05);
+}
+
+/* Botão voltar dentro do workspace (edição → download) */
+.backBtnInline {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.backBtnInline:hover {
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+  background: rgba(230, 57, 70, 0.05);
+}
+
 .workspace {
   display: flex;
   flex-direction: column;

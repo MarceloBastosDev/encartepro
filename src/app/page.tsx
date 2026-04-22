@@ -10,72 +10,52 @@ import HistoryPanel, { HistoryItem } from "@/components/HistoryPanel/HistoryPane
 
 // Carregados só no browser — usam window/WebAssembly e quebram o SSR
 import type { EditorSettings } from "@/components/ImageEditor/ImageEditor";
-const ImageEditor    = dynamic(() => import("@/components/ImageEditor/ImageEditor"),    { ssr: false });
+const ImageEditor     = dynamic(() => import("@/components/ImageEditor/ImageEditor"),     { ssr: false });
 const ConversionPanel = dynamic(() => import("@/components/ConversionPanel/ConversionPanel"), { ssr: false });
 
 type Tab = "busca" | "editor";
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<Tab>("busca");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [editedBlob, setEditedBlob] = useState<Blob | null>(null);
+  const [activeTab, setActiveTab]             = useState<Tab>("busca");
+  const [selectedFile, setSelectedFile]       = useState<File | null>(null);
+  const [editedBlob, setEditedBlob]           = useState<Blob | null>(null);
   const [processedImageUrl, setProcessedImageUrl] = useState<string | null>(null);
-  const [downloadExt, setDownloadExt] = useState<string>('png');
+  const [downloadExt, setDownloadExt]         = useState<string>('png');
   const [isPreparingHeic, setIsPreparingHeic] = useState(false);
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [history, setHistory]                 = useState<HistoryItem[]>([]);
 
-  // Chamado quando o usuário clica em um produto na busca
+  const goToBusca = () => setActiveTab("busca");
+
   const handleSelectProduct = (file: File, _title: string) => {
     setEditedBlob(null);
     setProcessedImageUrl(null);
     setSelectedFile(file);
-    setActiveTab("editor"); // muda para a aba do editor automaticamente
+    setActiveTab("editor");
   };
 
   const handleFileSelect = async (file: File) => {
     setEditedBlob(null);
     setProcessedImageUrl(null);
-
-    const isHeic = file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
-
+    const isHeic = /\.hei[cf]$/i.test(file.name);
     if (isHeic) {
       setIsPreparingHeic(true);
       try {
         const heic2any = (await import('heic2any')).default;
-        const convertedBlob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
-        const finalBlob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
-        const convertedFile = new File([finalBlob], file.name.replace(/\.hei[cf]$/i, '.jpg'), { type: 'image/jpeg' });
-        setSelectedFile(convertedFile);
-      } catch (error) {
-        console.error("HEIC Conversion error:", error);
-        alert("Ocorreu um erro ao processar o arquivo HEIC.");
-      } finally {
-        setIsPreparingHeic(false);
-      }
+        const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+        const blob = Array.isArray(converted) ? converted[0] : converted;
+        setSelectedFile(new File([blob], file.name.replace(/\.hei[cf]$/i, '.jpg'), { type: 'image/jpeg' }));
+      } catch { alert("Ocorreu um erro ao processar o arquivo HEIC."); }
+      finally { setIsPreparingHeic(false); }
     } else {
       setSelectedFile(file);
     }
   };
 
-  const handleEditorSave = (blob: Blob, _settings: EditorSettings) => {
-    setEditedBlob(blob);
-  };
+  const handleEditorSave   = (blob: Blob, _s: EditorSettings) => setEditedBlob(blob);
+  const handleEditorCancel = () => setSelectedFile(null);
+  const handleClear        = () => { setSelectedFile(null); setEditedBlob(null); setProcessedImageUrl(null); };
 
-  const handleEditorCancel = () => {
-    setSelectedFile(null);
-  };
-
-  const handleClear = () => {
-    setSelectedFile(null);
-    setEditedBlob(null);
-    setProcessedImageUrl(null);
-  };
-
-  const handleClearHistory = () => {
-    history.forEach(item => URL.revokeObjectURL(item.url));
-    setHistory([]);
-  };
-
+  const handleClearHistory      = () => { history.forEach(i => URL.revokeObjectURL(i.url)); setHistory([]); };
   const handleDeleteHistoryItem = (id: string) => {
     const item = history.find(i => i.id === id);
     if (item) URL.revokeObjectURL(item.url);
@@ -85,9 +65,7 @@ export default function Home() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1 className={styles.title}>
-          Encarte<span>Pro</span>
-        </h1>
+        <h1 className={styles.title}>Encarte<span>Pro</span></h1>
         <p className={styles.subtitle}>
           Busque produtos, edite imagens e remova fundos com IA — tudo para os seus encartes de supermercado.
         </p>
@@ -97,7 +75,7 @@ export default function Home() {
       <div className={styles.tabs}>
         <button
           className={`${styles.tab} ${activeTab === "busca" ? styles.tabActive : ""}`}
-          onClick={() => setActiveTab("busca")}
+          onClick={goToBusca}
         >
           🔍 Buscar Produtos
         </button>
@@ -111,16 +89,22 @@ export default function Home() {
 
       <main className={styles.mainContent}>
 
-        {/* ── Aba de busca ── */}
-        {activeTab === "busca" && (
-          <div className={`${styles.appCard} ${styles.wideCard}`}>
-            <ProductSearch onSelectImage={handleSelectProduct} />
-          </div>
-        )}
+        {/* ── Aba de busca — sempre montada para preservar os resultados ── */}
+        <div
+          className={`${styles.appCard} ${styles.wideCard}`}
+          style={{ display: activeTab === "busca" ? undefined : "none" }}
+        >
+          <ProductSearch onSelectImage={handleSelectProduct} />
+        </div>
 
         {/* ── Aba do editor ── */}
         {activeTab === "editor" && (
           <>
+            {/* Botão de voltar para a busca */}
+            <button className={styles.backBtn} onClick={goToBusca}>
+              ← Voltar para a busca
+            </button>
+
             <div className={styles.appCard}>
               {isPreparingHeic ? (
                 <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
@@ -137,6 +121,12 @@ export default function Home() {
                 />
               ) : (
                 <div className={styles.workspace}>
+                  <button
+                    className={styles.backBtnInline}
+                    onClick={() => setEditedBlob(null)}
+                  >
+                    ← Voltar para edição
+                  </button>
                   <ImagePreview
                     originalFile={new File([editedBlob], selectedFile?.name || "edited-image.png", { type: editedBlob.type })}
                     processedUrl={processedImageUrl}
@@ -148,14 +138,13 @@ export default function Home() {
                     onProcessed={(url, ext) => {
                       setProcessedImageUrl(url);
                       setDownloadExt(ext);
-                      const newItem: HistoryItem = {
+                      setHistory(prev => [{
                         id: Date.now().toString(),
                         url,
                         originalName: selectedFile?.name || 'imagem',
                         extension: ext,
-                        timestamp: Date.now()
-                      };
-                      setHistory(prev => [newItem, ...prev]);
+                        timestamp: Date.now(),
+                      }, ...prev]);
                     }}
                   />
                 </div>
